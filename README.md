@@ -1,73 +1,87 @@
-# Welcome to your Lovable project
 
-## Project info
+# Virtualized Ant Design Table with Fixed Columns
 
-**URL**: https://lovable.dev/projects/23483349-6c58-4182-a40f-fbd29cfd69a2
+This project demonstrates a high-performance table built with React, Ant Design, and react-window that can handle 1000+ rows with fixed columns and nested data structures.
 
-## How can I edit this code?
+## Features
 
-There are several ways of editing your application.
+- **Virtualization**: Handles 1000+ parent rows with expandable children using react-window
+- **Fixed Columns**: First column (Campaign) and last column (Actions) stay fixed while others scroll horizontally
+- **Editable Cells**: Numeric cells are editable with data persisted in Redux store
+- **Parent-Child Summation**: Parent values automatically sum children values with visual indicators for overrides
+- **Row Actions**: Interactive elements including popover menus and modal dialogs
 
-**Use Lovable**
+## Setup Instructions
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/23483349-6c58-4182-a40f-fbd29cfd69a2) and start prompting.
+To run this project, you need to install the following dependencies:
 
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+```bash
+npm install antd@4.24.15 @ant-design/icons@5.3.0 react-window@1.8.10 @reduxjs/toolkit@2.2.1 react-redux@9.1.0
 ```
 
-**Edit a file directly in GitHub**
+These dependencies must be added to your package.json before the application can run properly.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Implementation Details
 
-**Use GitHub Codespaces**
+The implementation follows a component-based architecture with these key elements:
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+1. `VirtualizedTable`: The main table component that leverages react-window's `VariableSizeGrid`
+2. `EditableCell`: Reusable component for editable numeric cells
+3. Redux store with a dedicated slice for table data management
+4. Data generation utility that produces 1000+ parent rows with children
 
-## What technologies are used for this project?
+## Technical Decisions
 
-This project is built with:
+### Virtualization Strategy
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+The table uses react-window's `VariableSizeGrid` component to efficiently render only the visible cells, drastically improving performance for large datasets. This approach maintains smooth scrolling even with thousands of rows.
 
-## How can I deploy this project?
+### State Management
 
-Simply open [Lovable](https://lovable.dev/projects/23483349-6c58-4182-a40f-fbd29cfd69a2) and click on Share -> Publish.
+Redux is used to centrally manage the table data, with a dedicated slice that handles:
+- Cell value updates
+- Parent-child value relationships
+- Automatic summation logic
 
-## Can I connect a custom domain to my Lovable project?
+### Fixed Columns Implementation
 
-Yes, you can!
+The first and last columns remain fixed while the middle columns scroll horizontally. This is achieved through a custom implementation of the grid layout with fixed position styling for the edge columns.
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+### Parent-Child Data Relationship
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+Parent rows automatically display the sum of their children's values. When a parent value is manually overridden to differ from the sum, an orange dot appears in the top-right corner of the cell to indicate the override.
+
+## Code Structure
+
+- `/src/components/VirtualizedTable`: Main table component and related UI elements
+- `/src/store`: Redux setup with table data slice and actions
+- `/src/utils`: Utility functions including the data generator
+
+## Data Structure
+
+The table data follows this structure:
+
+```typescript
+interface TableRow {
+  key: string;
+  campaign: string;
+  shortCode?: string;
+  color?: string;
+  nbUbCampagne: number;
+  nbUbHyper2: number;
+  nbUbHyper1: number;
+  nbUbSuper2: number;
+  nbUbSuper1: number;
+  status: string;
+  children?: TableRow[];
+  isTotal?: boolean;
+}
+```
+
+## Performance Optimization
+
+The table remains performant with 1000+ rows through:
+1. Virtualized rendering (only visible cells are in the DOM)
+2. Memoization of expensive calculations
+3. Efficient update patterns that limit re-renders
+4. Careful management of expanded/collapsed state
