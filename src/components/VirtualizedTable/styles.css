@@ -4,7 +4,7 @@
   position: relative;
   overflow: hidden;
   width: 100%;
-  height: calc(100vh - 180px); /* Take up most of the screen minus header */
+  height: 100vh; /* Take full viewport height */
 }
 
 /* Table header styles */
@@ -176,3 +176,9 @@
   border-radius: 8px;
   overflow: hidden;
 }
+
+/* Fix for the sticky header and columns */
+.ant-table-container {
+  height: calc(100vh - 20px); /* Adjust if needed for any padding/margins */
+}
+

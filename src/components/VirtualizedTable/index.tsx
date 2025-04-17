@@ -166,7 +166,7 @@ const VirtualizedTable: React.FC = () => {
         dataIndex: 'campaign',
         key: 'campaign',
         width: 280,
-        fixed: 'left',
+        fixed: 'left' as const, // Type fixed correctly
         render: renderCampaignColumn
       }
     ];
@@ -193,6 +193,7 @@ const VirtualizedTable: React.FC = () => {
         dataIndex: 'status',
         key: 'status',
         width: 120,
+        fixed: 'right' as const, // Fix the Status column to the right
         render: renderStatusColumn
       },
       {
@@ -200,7 +201,7 @@ const VirtualizedTable: React.FC = () => {
         dataIndex: 'actions',
         key: 'actions',
         width: 100,
-        fixed: 'right',
+        fixed: 'right' as const, // Type fixed correctly
         render: renderActionColumn
       }
     ];
@@ -208,11 +209,38 @@ const VirtualizedTable: React.FC = () => {
     return [...baseColumns, ...numericColumns, ...actionColumns];
   };
 
-  // Handle row expansion
+  // Handle row expansion - modify to ensure only one root parent is expanded at a time
   const onExpand = (expanded: boolean, record: any) => {
     if (expanded) {
-      setExpandedKeys([...expandedKeys, record.key]);
+      // If this is a root level row (level 0), close all other root rows
+      if (record.level === 0) {
+        // Find all currently expanded root level keys
+        const rootExpandedKeys = expandedKeys.filter(key => {
+          // Find the row by key
+          const findRow = (rows: any[]): any => {
+            for (const row of rows) {
+              if (row.key === key) return row;
+              if (row.children) {
+                const childRow = findRow(row.children);
+                if (childRow) return childRow;
+              }
+            }
+            return null;
+          };
+          
+          const row = findRow(data);
+          // If this is a root level row and not the newly expanded one, remove it
+          return row && row.level !== 0;
+        });
+        
+        // Set the new expanded keys: current non-root keys + this new key
+        setExpandedKeys([...rootExpandedKeys, record.key]);
+      } else {
+        // If not a root level row, just add to expanded keys
+        setExpandedKeys([...expandedKeys, record.key]);
+      }
     } else {
+      // When collapsing, remove this key and potentially its children
       setExpandedKeys(expandedKeys.filter(k => k !== record.key));
     }
   };
@@ -234,7 +262,7 @@ const VirtualizedTable: React.FC = () => {
           expandedRowKeys: expandedKeys
         }}
         bordered
-        scroll={{ x: '100%', y: 'calc(100vh - 240px)' }}
+        scroll={{ x: 1500, y: 800 }} // Use numeric values for scroll
         pagination={false}
         size="middle"
         virtual={true}
