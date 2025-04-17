@@ -9,7 +9,7 @@ interface CellValuePayload {
   value: number;
 }
 
-// Initial state includes both the data and any overridden parent values
+// Initial state includes both the data and any overridden values
 interface TableState {
   data: any[];
   overriddenValues: Record<string, Record<string, boolean>>;
@@ -20,31 +20,86 @@ const initialState: TableState = {
   overriddenValues: {}
 };
 
-// Helper to recalculate parent values from children
+// Helper to recalculate all parent values from children at any level
 const recalculateParentValues = (state: TableState) => {
-  state.data.forEach(row => {
-    if (row.children && row.children.length > 0) {
-      // Calculate what should be the sum of children values for numeric columns
-      const objectifsColumns = ['nbUbCampagne', 'nbUbHyper2', 'nbUbHyper1', 'nbUbSuper2', 'nbUbSuper1'];
+  // Recursively find a row by key in the data tree
+  const findRowByKey = (rows: any[], key: string): any => {
+    for (const row of rows) {
+      if (row.key === key) return row;
+      if (row.children) {
+        const found = findRowByKey(row.children, key);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+
+  // Get all numeric columns for summation
+  const getNumericColumns = (row: any) => {
+    return Object.keys(row).filter(key => 
+      typeof row[key] === 'number' && 
+      key !== 'key' && 
+      key !== 'level' &&
+      !['isTotal'].includes(key)
+    );
+  };
+
+  // Process parents from bottom up (level 1 first, then level 0)
+  // Find level 1 parents (those with level 2 children)
+  state.data.forEach(parent => {
+    if (!parent.children) return;
+    
+    parent.children.forEach(level1Child => {
+      if (!level1Child.children) return;
       
-      objectifsColumns.forEach(column => {
-        const calculatedSum = row.children.reduce((sum: number, child: any) => sum + (Number(child[column]) || 0), 0);
+      // Sum up level 2 children values for each level 1 parent
+      const numericColumns = getNumericColumns(level1Child);
+      
+      numericColumns.forEach(column => {
+        const calculatedSum = level1Child.children.reduce(
+          (sum: number, level2Child: any) => sum + (Number(level2Child[column]) || 0), 
+          0
+        );
         
-        // If there's no overridden value, set the parent value to the sum
-        if (!state.overriddenValues[row.key]?.[column]) {
-          row[column] = calculatedSum;
+        // If there's no overridden value, set the level 1 parent value to the sum
+        if (!state.overriddenValues[level1Child.key]?.[column]) {
+          level1Child[column] = calculatedSum;
         }
         // If there is an overridden value but it's now equal to the sum, remove the override
-        else if (row[column] === calculatedSum) {
-          if (state.overriddenValues[row.key]) {
-            delete state.overriddenValues[row.key][column];
-            if (Object.keys(state.overriddenValues[row.key]).length === 0) {
-              delete state.overriddenValues[row.key];
+        else if (level1Child[column] === calculatedSum) {
+          if (state.overriddenValues[level1Child.key]) {
+            delete state.overriddenValues[level1Child.key][column];
+            if (Object.keys(state.overriddenValues[level1Child.key]).length === 0) {
+              delete state.overriddenValues[level1Child.key];
             }
           }
         }
       });
-    }
+    });
+    
+    // Now sum up level 1 children to level 0 parent
+    const numericColumns = getNumericColumns(parent);
+    
+    numericColumns.forEach(column => {
+      const calculatedSum = parent.children.reduce(
+        (sum: number, level1Child: any) => sum + (Number(level1Child[column]) || 0), 
+        0
+      );
+      
+      // If there's no overridden value, set the parent value to the sum
+      if (!state.overriddenValues[parent.key]?.[column]) {
+        parent[column] = calculatedSum;
+      }
+      // If there is an overridden value but it's now equal to the sum, remove the override
+      else if (parent[column] === calculatedSum) {
+        if (state.overriddenValues[parent.key]) {
+          delete state.overriddenValues[parent.key][column];
+          if (Object.keys(state.overriddenValues[parent.key]).length === 0) {
+            delete state.overriddenValues[parent.key];
+          }
+        }
+      }
+    });
   });
 };
 
@@ -97,7 +152,7 @@ const tableSlice = createSlice({
         }
       }
       
-      // If this is a child row, recalculate parent values
+      // Recalculate parent values throughout the hierarchy
       recalculateParentValues(state);
     }
   }

@@ -1,14 +1,14 @@
 
-import React, { useState } from 'react';
-import { Table, Input, Popover, Modal, Badge, Typography } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { Table, Input, Popover, Modal, Badge, Typography, Select } from 'antd';
 import { MoreOutlined, MessageOutlined } from '@ant-design/icons';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../store';
 import { updateCellValue } from '../../store/tableSlice';
-import { tableColumns } from '../../utils/dataGenerator';
 import './styles.css';
 
 const { Text } = Typography;
+const { Option } = Select;
 
 const VirtualizedTable: React.FC = () => {
   const dispatch = useDispatch();
@@ -23,10 +23,11 @@ const VirtualizedTable: React.FC = () => {
 
   // Configure editable cell
   const EditableCell: React.FC<{
-    value: number;
+    value: any;
     record: any;
     dataIndex: string;
-  }> = ({ value, record, dataIndex }) => {
+    level?: number;
+  }> = ({ value, record, dataIndex, level = 0 }) => {
     const [editing, setEditing] = useState(false);
     const [inputValue, setInputValue] = useState(value);
     
@@ -44,12 +45,20 @@ const VirtualizedTable: React.FC = () => {
       record.children.length > 0 && 
       overriddenValues[record.key]?.[dataIndex];
 
+    // If this is the total row or a value like € that shouldn't be editable
+    const isEditable = !record.isTotal && typeof value === 'number';
+    
     if (editing) {
       return (
         <div className="editable-cell">
           <Input 
             value={inputValue}
-            onChange={e => setInputValue(Number(e.target.value))}
+            onChange={e => {
+              const val = e.target.value;
+              if (!isNaN(Number(val)) || val === '') {
+                setInputValue(val === '' ? 0 : Number(val));
+              }
+            }}
             onPressEnter={handleSave}
             onBlur={handleSave}
             autoFocus
@@ -62,18 +71,47 @@ const VirtualizedTable: React.FC = () => {
     return (
       <div 
         className="editable-cell" 
-        onClick={() => !record.isTotal && setEditing(true)}
-        style={{ cursor: record.isTotal ? 'default' : 'pointer' }}
+        onClick={() => isEditable && setEditing(true)}
+        style={{ cursor: isEditable ? 'pointer' : 'default' }}
       >
         <span className="editable-cell-value-wrap">
-          {value}
-          {hasOverride && (
-            <span 
-              className="override-indicator"
-              style={{ backgroundColor: '#F97316' }}
-            />
-          )}
+          {typeof value === 'number' ? value : value}
+          {hasOverride && <span className="override-indicator" />}
         </span>
+      </div>
+    );
+  };
+
+  // Configure campaign column
+  const renderCampaignColumn = (text: string, record: any, level = 0) => {
+    if (record.isTotal) {
+      return <Text strong>{text}</Text>;
+    }
+    
+    const campaignIndent = level * 24;
+
+    // Level 0 row shows the badge with code
+    if (level === 0 && record.shortCode) {
+      return (
+        <div className="campaign-badge" style={{ paddingLeft: campaignIndent }}>
+          <div 
+            className="campaign-code" 
+            style={{ backgroundColor: record.color || '#8E9196' }}
+          >
+            {record.shortCode}
+          </div>
+          <div className="campaign-details">
+            <div className="campaign-title">{record.campaign}</div>
+            {record.dates && <div className="campaign-date">{record.dates}</div>}
+          </div>
+        </div>
+      );
+    }
+    
+    // Level 1 or higher just shows text with appropriate indentation
+    return (
+      <div style={{ paddingLeft: campaignIndent + (level > 0 ? 0 : 0) }}>
+        <div className="campaign-title">{record.campaign}</div>
       </div>
     );
   };
@@ -95,9 +133,9 @@ const VirtualizedTable: React.FC = () => {
           <Popover
             content={
               <div className="action-menu">
-                <div className="action-item">Edit</div>
-                <div className="action-item">Duplicate</div>
-                <div className="action-item">Delete</div>
+                <div className="action-item">Modifier</div>
+                <div className="action-item">Dupliquer</div>
+                <div className="action-item">Supprimer</div>
               </div>
             }
             trigger="click"
@@ -110,30 +148,65 @@ const VirtualizedTable: React.FC = () => {
     );
   };
 
-  // Create columns configuration
-  const columns = tableColumns.map(col => {
-    if (col.dataIndex === 'actions') {
-      return {
-        ...col,
+  // Configure status column
+  const renderStatusColumn = (value: string) => {
+    return (
+      <div className="status-indicator">
+        <span className="status-dot"></span>
+        <span>En cours</span>
+      </div>
+    );
+  };
+
+  // Create expanded set of 16 columns
+  const generateColumns = () => {
+    const baseColumns = [
+      {
+        title: 'Campagnes - Marchés',
+        dataIndex: 'campaign',
+        key: 'campaign',
+        width: 280,
+        fixed: 'left',
+        render: renderCampaignColumn
+      }
+    ];
+    
+    // Generate 14 numeric columns
+    const numericColumns = Array.from({ length: 14 }, (_, i) => ({
+      title: `NB UB - ${i % 2 === 0 ? 'Hyper' : 'Super'} ${Math.floor(i/2) + 1}`,
+      dataIndex: `nbUb${i % 2 === 0 ? 'Hyper' : 'Super'}${Math.floor(i/2) + 1}`,
+      key: `nbUb${i % 2 === 0 ? 'Hyper' : 'Super'}${Math.floor(i/2) + 1}`,
+      width: 150,
+      editable: true,
+      render: (value: any, record: any) => (
+        <EditableCell 
+          value={value} 
+          record={record} 
+          dataIndex={`nbUb${i % 2 === 0 ? 'Hyper' : 'Super'}${Math.floor(i/2) + 1}`}
+        />
+      )
+    }));
+    
+    const actionColumns = [
+      {
+        title: 'Statut',
+        dataIndex: 'status',
+        key: 'status',
+        width: 120,
+        render: renderStatusColumn
+      },
+      {
+        title: 'Actions',
+        dataIndex: 'actions',
+        key: 'actions',
+        width: 100,
+        fixed: 'right',
         render: renderActionColumn
-      };
-    }
+      }
+    ];
     
-    if (col.editable) {
-      return {
-        ...col,
-        render: (value: any, record: any) => (
-          <EditableCell 
-            value={value} 
-            record={record} 
-            dataIndex={col.dataIndex} 
-          />
-        )
-      };
-    }
-    
-    return col;
-  });
+    return [...baseColumns, ...numericColumns, ...actionColumns];
+  };
 
   // Handle row expansion
   const onExpand = (expanded: boolean, record: any) => {
@@ -144,33 +217,37 @@ const VirtualizedTable: React.FC = () => {
     }
   };
 
+  // Configure row class based on nesting level
+  const getRowClassName = (record: any, index: number) => {
+    if (record.level === 2) return 'level-2-child';
+    return expandedKeys.includes(record.key) ? 'row-expanded' : '';
+  };
+
   return (
     <div className="virtualized-table-container">
       <Table
-        columns={columns}
+        columns={generateColumns()}
         dataSource={data}
-        rowClassName={(record) => 
-          expandedKeys.includes(record.key) ? 'row-expanded' : ''
-        }
+        rowClassName={getRowClassName}
         expandable={{
           onExpand,
-          expandedRowKeys: expandedKeys,
-          rowExpandable: record => record.children && record.children.length > 0
+          expandedRowKeys: expandedKeys
         }}
         bordered
-        scroll={{ x: 'max-content', y: 500 }}
+        scroll={{ x: '100%', y: 'calc(100vh - 240px)' }}
         pagination={false}
         size="middle"
-        virtual // Using Ant Design's built-in virtualization
+        virtual={true}
+        sticky
       />
       
       <Modal
-        title={`Comments for ${selectedRow?.campaign || ''}`}
+        title={`Commentaires pour ${selectedRow?.campaign || ''}`}
         open={modalVisible}
         onCancel={() => setModalVisible(false)}
         footer={null}
       >
-        <p>Add your comments for this campaign here.</p>
+        <p>Ajoutez vos commentaires pour cette campagne ici.</p>
       </Modal>
     </div>
   );
