@@ -1,62 +1,67 @@
+import React, { useState, useEffect } from 'react'
+import { Table, Input, Popover, Modal, Badge, Typography, Select, Button } from 'antd'
+import {
+  MoreOutlined,
+  MessageOutlined,
+  CaretDownOutlined,
+  CaretRightOutlined,
+} from '@ant-design/icons'
+import { useDispatch, useSelector } from 'react-redux'
+import { RootState } from '../../store'
+import { updateCellValue } from '../../store/tableSlice'
+import './styles.css'
 
-import React, { useState, useEffect } from 'react';
-import { Table, Input, Popover, Modal, Badge, Typography, Select } from 'antd';
-import { MoreOutlined, MessageOutlined } from '@ant-design/icons';
-import { useDispatch, useSelector } from 'react-redux';
-import { RootState } from '../../store';
-import { updateCellValue } from '../../store/tableSlice';
-import './styles.css';
-
-const { Text } = Typography;
-const { Option } = Select;
+const { Text } = Typography
+const { Option } = Select
 
 const VirtualizedTable: React.FC = () => {
-  const dispatch = useDispatch();
+  const dispatch = useDispatch()
   const { data, overriddenValues } = useSelector((state: RootState) => ({
     data: state.table.data,
-    overriddenValues: state.table.overriddenValues
-  }));
+    overriddenValues: state.table.overriddenValues,
+  }))
 
-  const [modalVisible, setModalVisible] = useState(false);
-  const [selectedRow, setSelectedRow] = useState<any>(null);
-  const [expandedKeys, setExpandedKeys] = useState<string[]>([]);
+  const [modalVisible, setModalVisible] = useState(false)
+  const [selectedRow, setSelectedRow] = useState<any>(null)
+  const [expandedKeys, setExpandedKeys] = useState<string[]>([])
 
   // Configure editable cell
   const EditableCell: React.FC<{
-    value: any;
-    record: any;
-    dataIndex: string;
-    level?: number;
+    value: any
+    record: any
+    dataIndex: string
+    level?: number
   }> = ({ value, record, dataIndex, level = 0 }) => {
-    const [editing, setEditing] = useState(false);
-    const [inputValue, setInputValue] = useState(value);
-    
+    const [editing, setEditing] = useState(false)
+    const [inputValue, setInputValue] = useState(value)
+
     const handleSave = () => {
-      dispatch(updateCellValue({
-        rowKey: record.key,
-        dataIndex,
-        value: Number(inputValue)
-      }));
-      setEditing(false);
-    };
+      dispatch(
+        updateCellValue({
+          rowKey: record.key,
+          dataIndex,
+          value: Number(inputValue),
+        })
+      )
+      setEditing(false)
+    }
 
     // Check if this cell has an override indicator
-    const hasOverride = record.children && 
-      record.children.length > 0 && 
-      overriddenValues[record.key]?.[dataIndex];
+    const hasOverride =
+      record.children && record.children.length > 0 && overriddenValues[record.key]?.[dataIndex]
 
     // If this is the total row or a value like € that shouldn't be editable
-    const isEditable = !record.isTotal && typeof value === 'number';
-    
+    const isEditable = !record.isTotal && typeof value === 'number'
+
     if (editing) {
       return (
         <div className="editable-cell">
-          <Input 
+          <Input
             value={inputValue}
-            onChange={e => {
-              const val = e.target.value;
+            onChange={(e) => {
+              const val = e.target.value
               if (!isNaN(Number(val)) || val === '') {
-                setInputValue(val === '' ? 0 : Number(val));
+                setInputValue(val === '' ? 0 : Number(val))
               }
             }}
             onPressEnter={handleSave}
@@ -65,12 +70,12 @@ const VirtualizedTable: React.FC = () => {
             className="editable-input"
           />
         </div>
-      );
+      )
     }
 
     return (
-      <div 
-        className="editable-cell" 
+      <div
+        className="editable-cell"
         onClick={() => isEditable && setEditing(true)}
         style={{ cursor: isEditable ? 'pointer' : 'default' }}
       >
@@ -79,25 +84,22 @@ const VirtualizedTable: React.FC = () => {
           {hasOverride && <span className="override-indicator" />}
         </span>
       </div>
-    );
-  };
+    )
+  }
 
   // Configure campaign column
   const renderCampaignColumn = (text: string, record: any, level = 0) => {
     if (record.isTotal) {
-      return <Text strong>{text}</Text>;
+      return <Text strong>{text}</Text>
     }
-    
-    const campaignIndent = level * 24;
+
+    const campaignIndent = level + 15
 
     // Level 0 row shows the badge with code
     if (level === 0 && record.shortCode) {
       return (
         <div className="campaign-badge" style={{ paddingLeft: campaignIndent }}>
-          <div 
-            className="campaign-code" 
-            style={{ backgroundColor: record.color || '#8E9196' }}
-          >
+          <div className="campaign-code" style={{ backgroundColor: record.color || '#8E9196' }}>
             {record.shortCode}
           </div>
           <div className="campaign-details">
@@ -105,30 +107,32 @@ const VirtualizedTable: React.FC = () => {
             {record.dates && <div className="campaign-date">{record.dates}</div>}
           </div>
         </div>
-      );
+      )
     }
-    
+
     // Level 1 or higher just shows text with appropriate indentation
     return (
       <div style={{ paddingLeft: campaignIndent + (level > 0 ? 0 : 0) }}>
         <div className="campaign-title">{record.campaign}</div>
       </div>
-    );
-  };
+    )
+  }
 
   // Configure action column
   const renderActionColumn = (_: any, record: any) => {
-    if (record.isTotal) return null;
-    
+    if (record.isTotal) return null
+
     return (
       <div className="actions-container">
         <div className="action-buttons">
           <MessageOutlined
             className="message-icon"
             onClick={() => {
-              setSelectedRow(record);
-              setModalVisible(true);
+              setSelectedRow(record)
+              setModalVisible(true)
             }}
+            onPointerEnterCapture={undefined}
+            onPointerLeaveCapture={undefined}
           />
           <Popover
             content={
@@ -141,12 +145,16 @@ const VirtualizedTable: React.FC = () => {
             trigger="click"
             placement="bottomRight"
           >
-            <MoreOutlined className="more-icon" />
+            <MoreOutlined
+              className="more-icon"
+              onPointerEnterCapture={undefined}
+              onPointerLeaveCapture={undefined}
+            />
           </Popover>
         </div>
       </div>
-    );
-  };
+    )
+  }
 
   // Configure status column
   const renderStatusColumn = (value: string) => {
@@ -155,8 +163,8 @@ const VirtualizedTable: React.FC = () => {
         <span className="status-dot"></span>
         <span>En cours</span>
       </div>
-    );
-  };
+    )
+  }
 
   // Create expanded set of 16 columns
   const generateColumns = () => {
@@ -167,26 +175,27 @@ const VirtualizedTable: React.FC = () => {
         key: 'campaign',
         width: 280,
         fixed: 'left' as const, // Type fixed correctly
-        render: renderCampaignColumn
-      }
-    ];
-    
+        className: 'first-column',
+        render: renderCampaignColumn,
+      },
+    ]
+
     // Generate 14 numeric columns
     const numericColumns = Array.from({ length: 14 }, (_, i) => ({
-      title: `NB UB - ${i % 2 === 0 ? 'Hyper' : 'Super'} ${Math.floor(i/2) + 1}`,
-      dataIndex: `nbUb${i % 2 === 0 ? 'Hyper' : 'Super'}${Math.floor(i/2) + 1}`,
-      key: `nbUb${i % 2 === 0 ? 'Hyper' : 'Super'}${Math.floor(i/2) + 1}`,
+      title: `NB UB - ${i % 2 === 0 ? 'Hyper' : 'Super'} ${Math.floor(i / 2) + 1}`,
+      dataIndex: `nbUb${i % 2 === 0 ? 'Hyper' : 'Super'}${Math.floor(i / 2) + 1}`,
+      key: `nbUb${i % 2 === 0 ? 'Hyper' : 'Super'}${Math.floor(i / 2) + 1}`,
       width: 150,
       editable: true,
       render: (value: any, record: any) => (
-        <EditableCell 
-          value={value} 
-          record={record} 
-          dataIndex={`nbUb${i % 2 === 0 ? 'Hyper' : 'Super'}${Math.floor(i/2) + 1}`}
+        <EditableCell
+          value={value}
+          record={record}
+          dataIndex={`nbUb${i % 2 === 0 ? 'Hyper' : 'Super'}${Math.floor(i / 2) + 1}`}
         />
-      )
-    }));
-    
+      ),
+    }))
+
     const actionColumns = [
       {
         title: 'Statut',
@@ -194,7 +203,7 @@ const VirtualizedTable: React.FC = () => {
         key: 'status',
         width: 120,
         fixed: 'right' as const, // Fix the Status column to the right
-        render: renderStatusColumn
+        render: renderStatusColumn,
       },
       {
         title: 'Actions',
@@ -202,12 +211,12 @@ const VirtualizedTable: React.FC = () => {
         key: 'actions',
         width: 100,
         fixed: 'right' as const, // Type fixed correctly
-        render: renderActionColumn
-      }
-    ];
-    
-    return [...baseColumns, ...numericColumns, ...actionColumns];
-  };
+        render: renderActionColumn,
+      },
+    ]
+
+    return [...baseColumns, ...numericColumns, ...actionColumns]
+  }
 
   // Handle row expansion - modify to ensure only one root parent is expanded at a time
   const onExpand = (expanded: boolean, record: any) => {
@@ -215,41 +224,41 @@ const VirtualizedTable: React.FC = () => {
       // If this is a root level row (level 0), close all other root rows
       if (record.level === 0) {
         // Find all currently expanded root level keys
-        const rootExpandedKeys = expandedKeys.filter(key => {
+        const rootExpandedKeys = expandedKeys.filter((key) => {
           // Find the row by key
           const findRow = (rows: any[]): any => {
             for (const row of rows) {
-              if (row.key === key) return row;
+              if (row.key === key) return row
               if (row.children) {
-                const childRow = findRow(row.children);
-                if (childRow) return childRow;
+                const childRow = findRow(row.children)
+                if (childRow) return childRow
               }
             }
-            return null;
-          };
-          
-          const row = findRow(data);
+            return null
+          }
+
+          const row = findRow(data)
           // If this is a root level row and not the newly expanded one, remove it
-          return row && row.level !== 0;
-        });
-        
+          return row && row.level !== 0
+        })
+
         // Set the new expanded keys: current non-root keys + this new key
-        setExpandedKeys([...rootExpandedKeys, record.key]);
+        setExpandedKeys([...rootExpandedKeys, record.key])
       } else {
         // If not a root level row, just add to expanded keys
-        setExpandedKeys([...expandedKeys, record.key]);
+        setExpandedKeys([...expandedKeys, record.key])
       }
     } else {
       // When collapsing, remove this key and potentially its children
-      setExpandedKeys(expandedKeys.filter(k => k !== record.key));
+      setExpandedKeys(expandedKeys.filter((k) => k !== record.key))
     }
-  };
+  }
 
   // Configure row class based on nesting level
   const getRowClassName = (record: any, index: number) => {
-    if (record.level === 2) return 'level-2-child';
-    return expandedKeys.includes(record.key) ? 'row-expanded' : '';
-  };
+    if (record.level === 2) return 'level-2-child'
+    return expandedKeys.includes(record.key) ? 'row-expanded' : ''
+  }
 
   return (
     <div className="virtualized-table-container">
@@ -259,7 +268,23 @@ const VirtualizedTable: React.FC = () => {
         rowClassName={getRowClassName}
         expandable={{
           onExpand,
-          expandedRowKeys: expandedKeys
+          expandedRowKeys: expandedKeys,
+          expandIcon: ({ expanded, onExpand, record }) => {
+            if (record.children && record.children.length > 0) {
+              return (
+                <Button
+                  type="text"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onExpand(record, e)
+                  }}
+                  className={`expand-icon ${expanded ? 'expanded' : ''}`}
+                >
+                  {expanded ? <CaretDownOutlined /> : <CaretRightOutlined />}
+                </Button>
+              )
+            }
+          },
         }}
         bordered
         scroll={{ x: 1500, y: 800 }} // Use numeric values for scroll
@@ -268,7 +293,7 @@ const VirtualizedTable: React.FC = () => {
         virtual={true}
         sticky
       />
-      
+
       <Modal
         title={`Commentaires pour ${selectedRow?.campaign || ''}`}
         open={modalVisible}
@@ -278,7 +303,7 @@ const VirtualizedTable: React.FC = () => {
         <p>Ajoutez vos commentaires pour cette campagne ici.</p>
       </Modal>
     </div>
-  );
-};
+  )
+}
 
-export default VirtualizedTable;
+export default VirtualizedTable
