@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, memo } from "react";
 import {
   Table,
   Input,
@@ -19,9 +19,11 @@ import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "../../store";
 import { updateCellValue } from "../../store/tableSlice";
 import "./styles.css";
+import { KitIdCard, KitInput, KitTypography } from "aristid-ds";
 
 const { Text } = Typography;
-const { Option } = Select;
+
+const USE_DESIGN_SYSTEM_COMPONENTS = true;
 
 const VirtualizedTable: React.FC = () => {
   const dispatch = useDispatch();
@@ -40,7 +42,7 @@ const VirtualizedTable: React.FC = () => {
     record: any;
     dataIndex: string;
     level?: number;
-  }> = ({ value, record, dataIndex, level = 0 }) => {
+  }> = memo(({ value, record, dataIndex, level = 0 }) => {
     const [editing, setEditing] = useState(false);
     const [inputValue, setInputValue] = useState(value);
 
@@ -67,19 +69,33 @@ const VirtualizedTable: React.FC = () => {
     if (editing) {
       return (
         <div className="editable-cell">
-          <Input
-            value={inputValue}
-            onChange={(e) => {
-              const val = e.target.value;
-              if (!isNaN(Number(val)) || val === "") {
-                setInputValue(val === "" ? 0 : Number(val));
-              }
-            }}
-            onPressEnter={handleSave}
-            onBlur={handleSave}
-            autoFocus
-            className="editable-input"
-          />
+          {USE_DESIGN_SYSTEM_COMPONENTS ? (
+            <KitInput
+              value={inputValue}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (!isNaN(Number(val)) || val === "") {
+                  setInputValue(val === "" ? 0 : Number(val));
+                }
+              }}
+              onPressEnter={handleSave}
+              onBlur={handleSave}
+              autoFocus
+            />
+          ) : (
+            <Input
+              value={inputValue}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (!isNaN(Number(val)) || val === "") {
+                  setInputValue(val === "" ? 0 : Number(val));
+                }
+              }}
+              onPressEnter={handleSave}
+              onBlur={handleSave}
+              autoFocus
+            />
+          )}
         </div>
       );
     }
@@ -96,7 +112,7 @@ const VirtualizedTable: React.FC = () => {
         </span>
       </div>
     );
-  };
+  });
 
   // Configure campaign column
   const renderCampaignColumn = (text: string, record: any) => {
@@ -104,11 +120,20 @@ const VirtualizedTable: React.FC = () => {
       return <Text strong>{text}</Text>;
     }
 
-    const campaignIndent = record.level + 15;
-
     // Level 0 row shows the badge with code
     if (record.level === 0 && record.shortCode) {
-      return (
+      return USE_DESIGN_SYSTEM_COMPONENTS ? (
+        <KitIdCard
+          avatarProps={{
+            shape: "square",
+            label: record.campaign,
+            color: record.color || "#8E9196",
+          }}
+          title={record.campaign}
+          description={record.dates}
+          disableTooltip //TODO: temporary fix to improve perfs
+        />
+      ) : (
         <div className="campaign-badge" style={{ paddingLeft: 0 }}>
           <div
             className="campaign-code"
@@ -126,8 +151,13 @@ const VirtualizedTable: React.FC = () => {
       );
     }
 
+    const campaignIndent = record.level + 15;
     // Level 1 or higher just shows text with appropriate indentation
-    return (
+    return USE_DESIGN_SYSTEM_COMPONENTS ? (
+      <KitTypography.Text weight="bold" style={{ paddingLeft: campaignIndent }}>
+        {record.campaign}
+      </KitTypography.Text>
+    ) : (
       <div style={{ paddingLeft: campaignIndent + (record.level > 0 ? 0 : 0) }}>
         <div className="campaign-title">{record.campaign}</div>
       </div>
