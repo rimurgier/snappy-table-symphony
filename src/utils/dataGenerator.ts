@@ -1,168 +1,205 @@
 // Utility to generate large sets of mock data for the table with two-level hierarchy
 
-// Campaign types and their colors/labels for level 0
-const campaignTypes = [
-  {
-    type: 'Nouvel An',
-    shortCode: 'NA',
-    color: '#00CFC1', // Teal
-  },
-  {
-    type: 'Promo 1',
-    shortCode: 'P1',
-    color: '#3469FD', // Blue
-  },
-  {
-    type: 'Épiphanie',
-    shortCode: 'Ép',
-    color: '#01D3A1', // Green
-  },
-  {
-    type: 'Promo 2',
-    shortCode: 'P2',
-    color: '#3469FD', // Blue
-  },
-  {
-    type: "Soldes d'hiver",
-    shortCode: 'SH',
-    color: '#00CFC1', // Teal
-  },
-  {
-    type: 'Promo 3',
-    shortCode: 'P3',
-    color: '#3469FD', // Blue
-  },
-  {
-    type: 'Semaine de la joie',
-    shortCode: 'SN',
-    color: '#FDBA33', // Yellow
-  },
-  {
-    type: 'TPA 4',
-    shortCode: 'T4',
-    color: '#F070B6', // Pink
-  },
-]
+export type Campaign = {
+  name: string
+  rayon: string
+  dates: string
+  shortCode: string
+  color: string
+}
+export interface Category {
+  id: string
+  name: string
+}
 
-// Level 1 campaign types
-const thematics = [
-  {
-    type: 'Épiphanie n°2',
-    shortCode: null,
-    color: null,
-  },
-  {
-    type: 'Super Promo',
-    shortCode: null,
-    color: '#5D5FEF',
-  },
-  {
-    type: 'New Year Special',
-    shortCode: null,
-    color: null,
-  },
-]
+export interface Thematic {
+  id: string
+  name: string
+}
 
-// Level 2 campaign types
-const categories = [
-  {
-    type: 'EPCS',
-    shortCode: null,
-    color: '#FF3232', // Red
-  },
-  {
-    type: 'PGC',
-    shortCode: null,
-    color: '#FDBA33', // Yellow
-  },
-  {
-    type: 'PME',
-    shortCode: null,
-    color: null,
-  },
-  {
-    type: 'Bio',
-    shortCode: null,
-    color: null,
-  },
-]
+export enum ItemId {
+  CAMPAIGN = 'campaign',
+  THEMATIC = 'thematic',
+  CATEGORY = 'category',
+  RAYON = 'rayon',
+  TOTAL = 'total',
+}
+
+export interface Item {
+  key: string
+  parentKey?: string
+  status?: string
+
+  // multi type
+  children?: Item[]
+  type: ItemId
+  level: number // use for css indent
+  data: Campaign | Thematic | Category | string
+
+  // Dynamically allow version keys
+  [key: `Version${number}`]: number | undefined
+}
+
+export interface CompaignItem extends Item {
+  type: ItemId.CAMPAIGN
+  data: Campaign
+  children: ThematicItem[]
+}
+
+export interface ThematicItem extends Item {
+  type: ItemId.THEMATIC
+  data: Thematic
+  children: CategoryItem[]
+}
+
+export interface CategoryItem extends Item {
+  type: ItemId.CATEGORY
+  data: Category
+  children: RayonItem[]
+}
+
+export interface RayonItem extends Item {
+  type: ItemId.RAYON
+  data: string
+}
+export interface TotalItem extends Item {
+  type: ItemId.TOTAL
+  data: string
+}
+
+// Define types for our data structure
+export type DataItem = CompaignItem | ThematicItem | CategoryItem | RayonItem | TotalItem
 
 // Define all numeric columns we'll be using
-const OBJECTIFS_COLUMNS = []
-for (let i = 0; i < 14; i++) {
-  OBJECTIFS_COLUMNS.push(`nbUb${i % 2 === 0 ? 'Hyper' : 'Super'}${Math.floor(i / 2) + 1}`)
-}
+const VERSION_COLUMNS = Array.from({ length: 14 }, (_, i) => `Version${i + 1}`)
 
 // Generate random number between min and max
 function getRandomNumber(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min
 }
 
+// Function to generate two random dates from the current year and return them as a range
+const generateRandomDateRange = (): string => {
+  const currentYear = new Date().getFullYear()
+  let start = new Date(
+    currentYear,
+    Math.floor(Math.random() * 12),
+    Math.floor(Math.random() * 28) + 1
+  )
+  let end = new Date(
+    currentYear,
+    Math.floor(Math.random() * 12),
+    Math.floor(Math.random() * 28) + 1
+  )
+
+  // Ensure start date is before end date
+  if (start > end) {
+    ;[start, end] = [end, start]
+  }
+
+  const formatDate = (date: Date): string => {
+    const day = String(date.getDate()).padStart(2, '0')
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const year = date.getFullYear()
+    return `${day}/${month}/${year}`
+  }
+
+  return `${formatDate(start)} -> ${formatDate(end)}`
+}
+
+const thematics = ['Épiphanie2', 'PME', 'Bio', 'Hallowen', 'La réponse D']
+const colors = ['#00CFC1', '#3469FD', '#01D3A1', '#FDBA33', '#F070B6']
+const categories = ['PGC', 'EPCS']
+const products = ['eau', 'jus', 'soda', 'bière', 'vin']
+const statuses = ['Active', 'Inactive', 'Pending', 'Archived']
+const sortOption = 'PGC / Liquides'
 // Generate a row with random data
-function generateRow(
-  campaignType: any,
-  index: number,
-  level: number = 0,
-  hasChildren: boolean = false
-): any {
+function generateRow(type: ItemId, index: number, level = 0, parentKey?: string): Item {
   // Create base object with all required columns
-  const baseObj: any = {
-    key: `${level}-${campaignType.type.replace(/\s+/g, '')}-${index}`,
-    campaign: campaignType.type,
-    shortCode: campaignType.shortCode,
-    color: campaignType.color,
-    level: level,
-    dates: level === 0 ? 'DD/MM/AAAA → DD/MM/AAAA' : undefined,
-    status: 'En cours',
-    children: hasChildren ? [] : undefined,
+
+  const baseItem: Partial<DataItem> = {
+    type,
+    key: `${parentKey ? parentKey + '-' : ''}${level}-${type}-${index}`,
+    level,
+    status: statuses[Math.floor(Math.random() * statuses.length)],
+    children: [],
+    parentKey,
   }
 
   // Add all numeric columns
-  OBJECTIFS_COLUMNS.forEach((col) => {
-    baseObj[col] = getRandomNumber(10, 150)
+  VERSION_COLUMNS.forEach((col) => {
+    baseItem[col] = getRandomNumber(10, 150)
   })
 
-  return baseObj
+  switch (type) {
+    case ItemId.CAMPAIGN:
+      baseItem.data = {
+        name: `${thematics[index % thematics.length]}${index}`,
+        rayon: sortOption,
+        dates: generateRandomDateRange(),
+        shortCode: `C${index + 1}`,
+        color: colors[Math.floor(Math.random() * colors.length)],
+      }
+      break
+    case ItemId.THEMATIC:
+      baseItem.data = {
+        id: thematics[index],
+        name: thematics[index],
+      }
+      break
+    case ItemId.CATEGORY:
+      baseItem.data = {
+        id: categories[index],
+        name: categories[index],
+      }
+      break
+    case ItemId.RAYON:
+      baseItem.data = {
+        id: products[index],
+        name: products[index],
+      }
+      break
+    case ItemId.TOTAL:
+      baseItem.data = 'Totaux'
+      break
+    default:
+      baseItem.data = 'no data found'
+      break
+  }
+
+  return baseItem as Item
 }
 
-// Generate children for a level 0 parent
-function generateLevel1Children(parentIndex: number): any[] {
-  // Select a subset of thematics
-  const selectedTypes = thematics.slice(0, getRandomNumber(1, 3))
-  return selectedTypes.map((type, index) => {
-    const hasChildren = Math.random() < 0.7 // 70% chance to have level 2 children
-    const level1Child = generateRow(type, parentIndex * 10 + index, 1, hasChildren)
+// Generate children for a parent based on level
+function generateChildren(parentKey: string, level: number): Item[] {
+  const dataSources = [thematics, categories, products]
+  const itemTypes = [ItemId.THEMATIC, ItemId.CATEGORY, ItemId.RAYON]
 
-    if (hasChildren) {
-      level1Child.children = generateLevel2Children(parentIndex, index)
-    }
+  if (level >= dataSources.length) {
+    return []
+  }
 
-    return level1Child
-  })
-}
-
-// Generate children for a level 1 parent
-function generateLevel2Children(parentIndex: number, level1Index: number): any[] {
-  // Select a subset of categories
-  const selectedTypes = categories.slice(0, getRandomNumber(2, 4))
-  return selectedTypes.map((type, index) => {
-    return generateRow(type, parentIndex * 100 + level1Index * 10 + index, 2)
+  return dataSources[level].map((_, index) => {
+    const child = generateRow(itemTypes[level], index, level + 1, parentKey)
+    child.children = generateChildren(child.key, level + 1)
+    return child
   })
 }
 
 // Generate full dataset with two levels of hierarchy
-export function generateTableData(numParents: number): any[] {
+export function generateTableData(numParents: number): DataItem[] {
   const data = []
 
   // First, add the totals row
-  const totalsRow: any = {
+  const totalsRow: DataItem = {
+    type: ItemId.TOTAL,
     key: 'totaux',
-    campaign: 'Totaux',
-    isTotal: true,
+    data: 'Totaux',
+    level: 0,
   }
 
   // Add all numeric columns to totals row with value 10000
-  OBJECTIFS_COLUMNS.forEach((col) => {
+  VERSION_COLUMNS.forEach((col) => {
     totalsRow[col] = 10000
   })
 
@@ -171,17 +208,28 @@ export function generateTableData(numParents: number): any[] {
   // Then generate regular rows
   for (let i = 0; i < numParents; i++) {
     // Cycle through campaign types
-    const campaignType = campaignTypes[i % campaignTypes.length]
 
-    const row = generateRow(campaignType, i, 0, true)
-
-    // Generate level 1 children if needed
-
-    const children = generateLevel1Children(i)
+    const row = generateRow(ItemId.CAMPAIGN, i, 0)
+    // Generate children for the campaign
+    const children = generateChildren(row.key, 0)
     row.children = children
 
-    // Calculate parent values based on children
-    OBJECTIFS_COLUMNS.forEach((col) => {
+    // // Calculate parent values based on children
+    // VERSION_COLUMNS.forEach((col) => {
+    //   // Initially set sum of children
+    //   row[col] = children.reduce((sum, child) => {
+    //     const calculateChildValue = (item: Item): number => {
+    //       if (item.children && item.children.length > 0) {
+    //         return item.children.reduce(
+    //           (subSum, subChild) => subSum + calculateChildValue(subChild),
+    //           0
+    //         )
+    //       }
+    //       return item[col] || 0
+    //     }
+    //     return sum + calculateChildValue(child)
+    //   }, 0)
+    VERSION_COLUMNS.forEach((col) => {
       // Initially set sum of children
       row[col] = children.reduce((sum, child) => {
         const childValue = child.children
@@ -195,7 +243,6 @@ export function generateTableData(numParents: number): any[] {
         row[col] += getRandomNumber(5, 15)
       }
     })
-
     data.push(row)
   }
 
@@ -210,7 +257,7 @@ interface TableColumn {
   width: number
   fixed?: 'left' | 'right'
   editable?: boolean
-  render?: (text: any, record: any) => any
+  render?: (text: any, item: DataItem) => any
 }
 
 // We'll dynamically generate columns in the component now, so keep this minimal

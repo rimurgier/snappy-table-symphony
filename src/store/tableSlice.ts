@@ -15,9 +15,11 @@ interface TableState {
 }
 
 const initialState: TableState = {
-  data: generateTableData(100), // Generate 1000 rows on init
+  data: generateTableData(10), // Generate 1000 rows on init
   overriddenValues: {},
 }
+
+console.log('Initial data:', initialState.data)
 
 // Helper to recalculate all parent values from children at any level
 const recalculateParentValues = (state: TableState) => {

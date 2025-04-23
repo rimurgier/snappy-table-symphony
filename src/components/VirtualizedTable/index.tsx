@@ -1,15 +1,28 @@
 import React, { useState, useEffect } from 'react'
-import { Table, Input, Popover, Modal, Badge, Typography, Select, Button } from 'antd'
+import {
+  Table,
+  Input,
+  Popover,
+  Modal,
+  Badge,
+  Typography,
+  Select,
+  Button,
+  Dropdown,
+  MenuProps,
+} from 'antd'
 import {
   MoreOutlined,
   MessageOutlined,
   CaretDownOutlined,
   CaretRightOutlined,
+  SmileOutlined,
 } from '@ant-design/icons'
 import { useDispatch, useSelector } from 'react-redux'
 import { RootState } from '../../store'
 import { updateCellValue } from '../../store/tableSlice'
 import './styles.css'
+import { DataItem, ItemId } from '@/utils/dataGenerator'
 
 const { Text } = Typography
 const { Option } = Select
@@ -24,6 +37,44 @@ const VirtualizedTable: React.FC = () => {
   const [modalVisible, setModalVisible] = useState(false)
   const [selectedRow, setSelectedRow] = useState<any>(null)
   const [expandedKeys, setExpandedKeys] = useState<string[]>([])
+
+  const menuItems: MenuProps['items'] = [
+    {
+      key: '1',
+      label: 'Action 1',
+    },
+    {
+      key: '2',
+      label: '2nd menu item (disabled)',
+      icon: <SmileOutlined />,
+      disabled: true,
+    },
+    {
+      key: '3',
+      label: '3rd menu item (disabled)',
+      disabled: true,
+    },
+    {
+      key: '4',
+      danger: true,
+      label: 'a danger item',
+    },
+  ]
+
+  const MenuIcon = () => (
+    <Dropdown menu={{ items: menuItems }} trigger={['click']}>
+      <MoreOutlined
+        style={{
+          fontSize: '24px',
+          cursor: 'pointer',
+          padding: '4px',
+          color: 'blue',
+        }}
+        onPointerEnterCapture={undefined}
+        onPointerLeaveCapture={undefined}
+      />
+    </Dropdown>
+  )
 
   // Configure editable cell
   const EditableCell: React.FC<{
@@ -88,34 +139,51 @@ const VirtualizedTable: React.FC = () => {
   }
 
   // Configure campaign column
-  const renderCampaignColumn = (text: string, record: any, level = 0) => {
-    if (record.isTotal) {
-      return <Text strong>{text}</Text>
-    }
-
-    const campaignIndent = level + 15
-
-    // Level 0 row shows the badge with code
-    if (level === 0 && record.shortCode) {
-      return (
-        <div className="campaign-badge" style={{ paddingLeft: campaignIndent }}>
-          <div className="campaign-code" style={{ backgroundColor: record.color || '#8E9196' }}>
-            {record.shortCode}
+  const renderCampaignColumn = (text: string, item: DataItem, level = 0) => {
+    switch (item.type) {
+      case ItemId.CAMPAIGN:
+        return (
+          <div className="column-campaign">
+            <div className="column-campaign-icon" style={{ backgroundColor: item.data.color }}>
+              {item.data.color}
+            </div>
+            <div className="column-campaign-details">
+              <div className="column-campaign-name">
+                <span className="subtitle">{item.data.rayon}</span> - {item.data.name}
+              </div>
+              <div className="column-campaign-date">{item.data.dates}</div>
+            </div>
+            <div className="column-campaign-menu">
+              <MenuIcon />
+            </div>
           </div>
-          <div className="campaign-details">
-            <div className="campaign-title">{record.campaign}</div>
-            {record.dates && <div className="campaign-date">{record.dates}</div>}
+        )
+      case ItemId.THEMATIC:
+        return <div style={{ fontWeight: 'bold' }}>{item.data.name}</div>
+      case ItemId.CATEGORY:
+        return (
+          <div className="category-name">
+            <span style={{ marginRight: '0.5rem' }}>🛑</span>
+            {item.data.name}
           </div>
-        </div>
-      )
+        )
+      case ItemId.RAYON:
+        return (
+          <div
+            style={{
+              paddingLeft: item.level * 18,
+              fontWeight: 'bold',
+            }}
+            className="rayon-name"
+          >
+            {item.data}
+          </div>
+        )
+      case ItemId.TOTAL:
+        return <Text strong>{item.data}</Text>
+      default:
+        return <Text strong>{text}</Text>
     }
-
-    // Level 1 or higher just shows text with appropriate indentation
-    return (
-      <div style={{ paddingLeft: campaignIndent + (level > 0 ? 0 : 0) }}>
-        <div className="campaign-title">{record.campaign}</div>
-      </div>
-    )
   }
 
   // Configure action column
